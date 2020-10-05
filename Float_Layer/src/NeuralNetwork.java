@@ -6,7 +6,7 @@ public class NeuralNetwork {
     String saveDestination;
     ArrayList<Float> deltaError;
 
-//    takes in an array as the parameter for the network size and a string to save the brain in a text file
+    //    takes in an array as the parameter for the network size and a string to save the brain in a text file
     NeuralNetwork(int[] layerSizes, String saveDestination){
         this(layerSizes, new float[]{-1f, 1f}, saveDestination);
     }
@@ -72,21 +72,29 @@ public class NeuralNetwork {
 //    public interface to input the necessary parameters
     public void train(DataSets trainingData, int iterations, float pruningThreshold, float defaultLearningRate) throws Exception{
         iterations *= (trainingData.size() * .5);
-        for(int trainingSection = 0; trainingSection < 2; trainingSection++){
+        int pruningLocation = 2;
+
+        for(int trainingSection = 1; trainingSection <= pruningLocation; trainingSection++){
             for(int iteration = 0; iteration < iterations; iteration++){
                 int index = iteration % trainingData.size();
                 boolean fixedRate = (trainingSection != 0) && .8 * iteration > iterations;
-                trainNeuralNetwork(trainingData.getDataSet(index)[0], trainingData.getDataSet(index)[1], defaultLearningRate, fixedRate);
+
+                float[] input = trainingData.getDataSet(index)[0];
+                float[] output = trainingData.getDataSet(index)[1];
+
+                trainNeuralNetwork(input, output, defaultLearningRate, fixedRate);
             }
-            if(trainingSection == 0)
+
+            if(trainingSection == pruningLocation - 1)
                 pruneNetwork(pruningThreshold);
-            else
+            if(trainingSection == pruningLocation)
                 saveBrain();
         }
     }
 
-//    class that calls all necessary classes for training
-    private void trainNeuralNetwork(float[] input, float[] target, float learningRate, boolean fixedEnd) throws Exception {
+//    class that calls all necessary classes for training, makes a prediction with the input,
+//    error is calculated from the output layer, and weights are changed to fit closer to model
+    private void trainNeuralNetwork(float[] input, float[] target, float learningRate, boolean fixedRate) throws Exception {
         predict(input);
 
         float[] findError = findError(target);
@@ -98,7 +106,7 @@ public class NeuralNetwork {
         deltaError.add(error);
         if(deltaError.size() > 3) deltaError.remove(0);
 
-        float adaptiveLearningRate = (fixedEnd || deltaError.size() <= 2) ? learningRate : AdaptiveLearningRate(deltaError);
+        float adaptiveLearningRate = (fixedRate || deltaError.size() <= 2) ? learningRate : AdaptiveLearningRate(deltaError);
 
         for(int layer = 0; layer < brain.length - 1; layer++)
             brain[layer].changeWeights(adaptiveLearningRate, brain[layer + 1]);
@@ -112,12 +120,12 @@ public class NeuralNetwork {
 
 //    saves the neural network structure in a text file
     private void saveBrain() {
-        StringBuilder brainString = new StringBuilder();
+        String brainString = "";
         for (Layer layer : this.brain)
-            brainString.append(layer.toString());
+            brainString += layer.toString();
 
         try(FileWriter fileWriter = new FileWriter(saveDestination)){
-            fileWriter.write(brainString.toString());
+            fileWriter.write(brainString);
         } catch(IOException ignored){
         }
     }
